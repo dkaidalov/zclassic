@@ -150,7 +150,7 @@ bool Solver(const CScript& scriptPubKey, txnouttype& typeRet, vector<vector<unsi
             else if (opcode2 == OP_SMALLDATA)
             {
                 // Possible values of OP_CHECKBLOCKATHEIGHT parameters
-                if (vch1.size() <= sizeof(int))
+                if (vch1.size() <= sizeof(int32_t))
                     vchBlockHeight = vch1;
                 else
                     vchBlockHash = vch1;
@@ -165,13 +165,13 @@ bool Solver(const CScript& scriptPubKey, txnouttype& typeRet, vector<vector<unsi
 
 #ifndef ZCASH_TX // This is a workaround. zcash-tx does not have access to chain state so no replay protection is possible
 
-                if (vchBlockHeight.size() == 0 || vchBlockHash.size() == 0)
+                if (vchBlockHash.size() == 0 || vchBlockHash.size() > 32)
                 {
                     LogPrintf("%s: %s: OP_CHECKBLOCKATHEIGHT verification failed. Bad params.", __FILE__, __func__);
                     break;
                 }
 
-                const int32_t nHeight = CScriptNum(vchBlockHeight, true, sizeof(int)).getint();
+                const int32_t nHeight = CScriptNum(vchBlockHeight, false, sizeof(int32_t)).getint();
 
                 if (nHeight < 0 || nHeight > chainActive.Height())
                 {
@@ -181,10 +181,7 @@ bool Solver(const CScript& scriptPubKey, txnouttype& typeRet, vector<vector<unsi
 
                 CBlockIndex* pblockindex = chainActive[nHeight];
 
-                vector<unsigned char> vchCompareTo(pblockindex->GetBlockHash().begin(), pblockindex->GetBlockHash().end());
-                vchCompareTo.erase(vchCompareTo.begin(), vchCompareTo.end() - vchBlockHash.size());
-
-                if (vchCompareTo != vchBlockHash)
+                if (pblockindex->GetBlockHash() != uint256(vchBlockHash))
                 {
                     LogPrintf("%s: %s: OP_CHECKBLOCKATHEIGHT verification failed. vout block height: %d", __FILE__, __func__, nHeight);
                     break;
